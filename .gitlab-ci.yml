@@ -1,0 +1,46 @@
+workflow:
+    name: "Build Project"
+
+stages: 
+  - prepare
+  - build
+  - sign
+  - deploy
+
+prepare-job:
+  stage: prepare
+  script:
+    - echo "TAG=v$(cat VERSION)" >> variables.env
+  artifacts:
+    reports:
+      dotenv: variables.env
+
+build-job:       # This job runs in the build stage, which runs first.
+  image: "rust:latest"
+  stage: build
+  before_script:
+    - apt-get update
+    - apt-get install libsoup2.4 gir1.2-javascriptcoregtk-4.0 libgtk-3-dev libwebkit2gtk-4.0-dev -y
+  script:
+    - echo "Compiling the code with:"
+    - rustc --version && cargo --version # Print version for debug
+    - cargo build 
+    - echo "Compile complete."
+
+sign-job:
+  stage: sign
+  script:
+    - echo "No cerificate Present"
+    - echo "Refusing to sign"
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  environment: production
+  script:
+    - echo "Deploying application as release..."
+  release:
+    name: "Production Release"
+    tag_name: '$TAG'
+    ref: '$CI_COMMIT_SHA'
+    description: "Build of project for Production"
